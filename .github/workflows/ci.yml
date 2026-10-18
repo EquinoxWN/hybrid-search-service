@@ -1,0 +1,78 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: the workflow can read the code and nothing else.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Throwaway database in a service container; trust auth never leaves the runner.
+  HSEARCH_TEST_DSN: postgres://postgres@127.0.0.1:5432/hsearch_test?sslmode=disable
+  HSEARCH_DSN: postgres://postgres@127.0.0.1:5432/hsearch?sslmode=disable
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # pgvector 0.8.7 on PostgreSQL 18, pinned by digest.
+        image: pgvector/pgvector:0.8.7-pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: hsearch_test
+        ports: ["127.0.0.1:5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+          --memory 512m
+    steps:
+      # Every action is pinned to a full commit SHA.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.9"
+      # The encoder is checked against the ONNX reference fixture, so fetch the pinned model first.
+      - name: Model (pinned revision, SHA-256 checked)
+        run: make model
+      - name: gofmt, go vet, tests with the race detector (PostgreSQL tests included)
+        run: make ci GOTESTFLAGS=-race
+      - name: Known-vulnerability audit
+        run: make audit
+
+  # Corpus, embedding, indexing, evaluation and the HTTP API against PostgreSQL + pgvector.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: hsearch
+        ports: ["127.0.0.1:5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+          --memory 512m
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.9"
+      - name: Index, evaluate and query (prints a notice per result)
+        run: make e2e
+      - name: Delete the model
+        if: always()
+        run: make clean-model
