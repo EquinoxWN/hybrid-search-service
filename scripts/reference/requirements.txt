@@ -1,4 +1,4 @@
 # Reference stack for testdata/minilm-reference.json (make reference). Not needed to build or run the service.
 numpy==2.5.4
-onnxruntime==1.31.0
+onnxruntime==1.31.1
 tokenizers==0.23.3

@@ -33,7 +33,7 @@ places (q04, q18, q23):
 
 ```mermaid
 flowchart LR
-  C["hsearch corpus<br/>Go 1.26.9 std docs<br/>2,281 JSONL docs"] --> I["hsearch index<br/>pure-Go MiniLM encoder<br/>384-dim unit vectors"]
+  C["hsearch corpus<br/>Go 1.26.10 std docs<br/>2,281 JSONL docs"] --> I["hsearch index<br/>pure-Go MiniLM encoder<br/>384-dim unit vectors"]
   I --> PG[("PostgreSQL 18<br/>tsvector + GIN<br/>vector(384) + HNSW")]
   Q["GET /search?q&mode&k"] --> K["keyword: websearch_to_tsquery<br/>ts_rank_cd, top 50"]
   Q --> V["vector: embed query<br/>cosine via HNSW, top 50"]
@@ -151,7 +151,7 @@ Latest local run (full detail in [docs/results/m1.md](docs/results/m1.md)):
 |---|---|
 | Tests | 27 passed, 0 failed, 0 skipped (model and test database present) |
 | Lint | gofmt, go vet: clean |
-| Audit | govulncheck v1.8.0 (Go 1.26.9): no vulnerabilities; pip-audit (reference stack): none |
+| Audit | govulncheck v1.8.0 (Go 1.26.10): no vulnerabilities; pip-audit (reference stack): none |
 | Keyword / vector / hybrid, nDCG@10 on 35 queries | 0.073 / 0.463 / **0.471** |
 | Queries with a relevant result in the top 10 | 4 / 30 / **31** of 35 |
 | OR-ed keyword terms instead (ADR 0003) | keyword 0.208, hybrid 0.405: not adopted |

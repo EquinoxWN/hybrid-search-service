@@ -46,7 +46,7 @@ learning how keyword, vector and hybrid retrieval compare.
 ## Design
 
 ```
-hsearch corpus  Go 1.26.9 standard library docs -> 2,281 JSONL documents (id, title, body)
+hsearch corpus  Go 1.26.10 standard library docs -> 2,281 JSONL documents (id, title, body)
 hsearch index   pure-Go MiniLM encoder (8 goroutines) -> 384-dim unit vectors
                 -> PostgreSQL 18: documents(id, title, body,
                                             tsv tsvector GENERATED (title weight A, body weight B) + GIN,
