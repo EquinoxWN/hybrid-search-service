@@ -148,3 +148,10 @@ func TestHTTPHandler(t *testing.T) {
 		t.Fatalf("POST /search: %d", rec.Code)
 	}
 }
+
+func TestQueryAtTheByteLimitIsAccepted(t *testing.T) {
+	s := New(&fakeEmbedder{}, &fakeBackend{kw: hits("a")}, 0)
+	if _, err := s.Search(context.Background(), strings.Repeat("x", MaxQueryBytes), Keyword, MaxK); err != nil {
+		t.Fatalf("query of exactly %d bytes and k = %d refused: %v", MaxQueryBytes, MaxK, err)
+	}
+}

@@ -22,7 +22,7 @@ places (q04, q18, q23):
 
 ![hsearch eval -per-query](docs/proof/eval.jpg)
 
-27 tests pass, including the encoder against the official ONNX export (identical tokens, cosine
+27 tests passed at M1 (31 since the [2026-11-01 quality pass](docs/quality/2026-11-01.md)), including the encoder against the official ONNX export (identical tokens, cosine
 0.9999999) and the PostgreSQL tests; govulncheck and pip-audit find nothing:
 
 ![gofmt, go vet, go test, govulncheck and pip-audit output](docs/proof/tests.jpg)
@@ -88,7 +88,7 @@ score scales never have to be mixed.
 | Ranking | `websearch_to_tsquery` + `ts_rank_cd`; cosine top-k; reciprocal rank fusion (k = 60) | Reranking of the top 50 (M2) |
 | Evaluation | 35 author-judged queries, Recall@10, MRR@10, nDCG@10, per-query ranks | 200 judged queries (M2), Meilisearch baseline (M3) |
 | API | `GET /search`, `GET /healthz`, loopback by default, bounded inputs, timeouts | Facets, autocomplete, highlighting (M3) |
-| Quality | gofmt, go vet, 27 tests (race detector in CI), govulncheck, pip-audit, CI with a pgvector container | |
+| Quality | gofmt, go vet, 31 tests (race detector in CI), govulncheck, pip-audit, CI with a pgvector container | |
 
 Language: **Go 1.26**; Python only for the optional reference fixture.
 
@@ -140,16 +140,16 @@ Latest local run (full detail in [docs/results/m1.md](docs/results/m1.md)):
 | Test file | Tests | What it proves |
 |---|---|---|
 | `internal/embed/embed_test.go` | 8 | Tokenizer rules, WordPiece, safetensors bounds, math kernels, a tiny model end to end, shape checks, and identical tokens plus cosine 0.9999999 against the ONNX reference |
-| `internal/fusion/rrf_test.go` | 3 | Worked example, edge cases, 500 random property checks |
-| `internal/store/store_test.go` | 3 | Input validation; against PostgreSQL + pgvector: schema, upsert, keyword and vector search, hostile query |
-| `internal/search/search_test.go` | 4 | Fusion of both lists, single modes, validation, HTTP status codes and headers, no leaked errors |
-| `internal/eval/eval_test.go` | 3 | Metrics, per-mode averages, judged-file validation, missing judgments refused |
+| `internal/fusion/rrf_test.go` | 4 | Worked example, edge cases, 500 random property checks, equal scores ordered by best single rank |
+| `internal/store/store_test.go` | 4 | Input validation; connection attempts bounded (10 s unless the DSN sets `connect_timeout`); against PostgreSQL + pgvector: schema, upsert, keyword and vector search, hostile query |
+| `internal/search/search_test.go` | 5 | Fusion of both lists, single modes, validation (a query of exactly 512 bytes accepted), HTTP status codes and headers, no leaked errors |
+| `internal/eval/eval_test.go` | 3 | Metrics, per-mode averages, judged-file validation (an empty file refused), missing judgments refused |
 | `internal/corpus/corpus_test.go` | 4 | Declarations extracted, platform files excluded, bad paths, JSONL limits |
-| `cmd/hsearch/main_test.go` | 2 | Corpus errors, usage errors |
+| `cmd/hsearch/main_test.go` | 3 | Corpus errors, usage errors, non-loopback listen addresses refused |
 
 | Check | Result |
 |---|---|
-| Tests | 27 passed, 0 failed, 0 skipped (model and test database present) |
+| Tests | 27 passed, 0 failed, 0 skipped at M1 (model and test database present); 31 since the quality pass (29 locally without the model and database, all 31 in CI) |
 | Lint | gofmt, go vet: clean |
 | Audit | govulncheck v1.8.0 (Go 1.26.10): no vulnerabilities; pip-audit (reference stack): none |
 | Keyword / vector / hybrid, nDCG@10 on 35 queries | 0.073 / 0.463 / **0.471** |
@@ -202,6 +202,7 @@ What this repo must show before it counts as done:
 - [ADR 0002: embed text with a pure-Go encoder, checked against ONNX Runtime](docs/adr/0002-pure-go-embedding-encoder.md)
 - [ADR 0003: require every query term in the keyword list that feeds fusion](docs/adr/0003-strict-keyword-list-for-fusion.md)
 - [M1 results](docs/results/m1.md)
+- [Quality check 2026-11-01](docs/quality/2026-11-01.md): the ten quality rules with evidence and a mutation table
 
 ## Scope
 

@@ -42,3 +42,16 @@ func TestUsageErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestServeRefusesNonLoopbackAddresses(t *testing.T) {
+	flagOutput = io.Discard
+	t.Cleanup(func() { flagOutput = os.Stderr })
+	t.Setenv("HSEARCH_DSN", "postgres://u@127.0.0.1:1/db")
+	for _, addr := range []string{"0.0.0.0:8080", "192.168.1.10:8080", "[::]:8080", "example.com:80", "nohost"} {
+		var out bytes.Buffer
+		code, err := run(context.Background(), []string{"serve", "-addr", addr}, &out)
+		if code != 2 || err == nil || !strings.Contains(err.Error(), "not a loopback address") {
+			t.Errorf("%s: code %d err %v", addr, code, err)
+		}
+	}
+}

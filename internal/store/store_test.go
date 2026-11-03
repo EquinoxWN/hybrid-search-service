@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestVectorLiteral(t *testing.T) {
@@ -102,5 +103,22 @@ func TestPostgresKeywordAndVectorSearch(t *testing.T) {
 	}
 	if err := s.Ping(ctx); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPoolConfigBoundsConnects(t *testing.T) {
+	cfg, err := poolConfig("postgres://u@127.0.0.1:1/db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ConnConfig.ConnectTimeout != connectTimeout || cfg.MaxConns != 8 {
+		t.Fatalf("connect timeout %s, max conns %d", cfg.ConnConfig.ConnectTimeout, cfg.MaxConns)
+	}
+	cfg, err = poolConfig("postgres://u@127.0.0.1:1/db?connect_timeout=3")
+	if err != nil || cfg.ConnConfig.ConnectTimeout != 3*time.Second {
+		t.Fatalf("the DSN's connect_timeout must win: %v %v", cfg.ConnConfig.ConnectTimeout, err)
+	}
+	if _, err := poolConfig("postgres://u@127.0.0.1:1/db?connect_timeout=x"); err == nil {
+		t.Fatal("bad DSN accepted")
 	}
 }

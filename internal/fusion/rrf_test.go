@@ -86,3 +86,19 @@ func TestRRFProperties(t *testing.T) {
 		}
 	}
 }
+
+func TestRRFEqualScoresPreferTheBetterSingleRank(t *testing.T) {
+	// With k = 1, rank 1 in one list scores 1/2, exactly as much as ranks 2 and 5 in two others.
+	got := RRF(1, 10, List{IDs: []string{"b"}}, List{IDs: []string{"x", "a"}}, List{IDs: []string{"y1", "y2", "y3", "y4", "a"}})
+	pos := map[string]int{}
+	for i, f := range got {
+		pos[f.ID] = i
+	}
+	a, b := got[pos["a"]], got[pos["b"]]
+	if a.Score != b.Score {
+		t.Fatalf("test setup: scores %v and %v should be equal", a.Score, b.Score)
+	}
+	if pos["b"] > pos["a"] {
+		t.Fatalf("b (best rank 1) should precede a (best rank 2) although a sorts first by ID: %+v", got)
+	}
+}

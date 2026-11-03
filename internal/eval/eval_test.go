@@ -68,6 +68,7 @@ func TestLoadAndCheckJudgments(t *testing.T) {
 		"dup.json":     `[{"id":"a","text":"t","relevant":["x"]},{"id":"a","text":"t","relevant":["x"]}]`,
 		"empty.json":   `[{"id":"a","text":"t","relevant":[]}]`,
 		"unknown.json": `[{"id":"a","text":"t","relevant":["x"],"extra":1}]`,
+		"none.json":    `[]`,
 	} {
 		p := filepath.Join(dir, name)
 		_ = os.WriteFile(p, []byte(body), 0o600)
