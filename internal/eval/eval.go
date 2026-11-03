@@ -48,6 +48,9 @@ func Load(path string) ([]Query, error) {
 	if err := dec.Decode(&qs); err != nil {
 		return nil, fmt.Errorf("eval: %s: %w", path, err)
 	}
+	if len(qs) == 0 {
+		return nil, fmt.Errorf("eval: %s: no judged queries", path) // averages over zero queries are NaN
+	}
 	seen := map[string]bool{}
 	for _, q := range qs {
 		if q.ID == "" || q.Text == "" || len(q.Relevant) == 0 || seen[q.ID] {

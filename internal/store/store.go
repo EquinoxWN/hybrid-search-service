@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -22,6 +23,8 @@ const (
 	MaxK          = 200
 	snippetChars  = 240
 	efSearch      = 200 // HNSW candidate list; must be at least the largest k
+	// connectTimeout bounds each new connection when the DSN sets no connect_timeout.
+	connectTimeout = 10 * time.Second
 )
 
 // Doc is one document with its embedding.
@@ -51,11 +54,10 @@ func Open(ctx context.Context, dsn string, dim int) (*Store, error) {
 	if dim <= 0 || dim > 16000 {
 		return nil, fmt.Errorf("store: embedding size %d out of range", dim)
 	}
-	cfg, err := pgxpool.ParseConfig(dsn)
+	cfg, err := poolConfig(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("store: parse DSN: %w", err)
+		return nil, err
 	}
-	cfg.MaxConns = 8
 	cfg.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
 		_, err := c.Exec(ctx, "SET hnsw.ef_search = "+strconv.Itoa(efSearch))
 		if err != nil && isUndefinedParam(err) {
@@ -72,6 +74,19 @@ func Open(ctx context.Context, dsn string, dim int) (*Store, error) {
 		return nil, fmt.Errorf("store: connect: %w", err)
 	}
 	return &Store{pool: pool, dim: dim}, nil
+}
+
+// poolConfig parses the DSN, caps the pool and bounds connection attempts.
+func poolConfig(dsn string) (*pgxpool.Config, error) {
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("store: parse DSN: %w", err)
+	}
+	cfg.MaxConns = 8
+	if cfg.ConnConfig.ConnectTimeout == 0 {
+		cfg.ConnConfig.ConnectTimeout = connectTimeout
+	}
+	return cfg, nil
 }
 
 // isUndefinedParam reports PostgreSQL's "unrecognized configuration parameter" error.
